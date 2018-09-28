@@ -1,0 +1,7 @@
+don't copy this folder into system
+nameofpkg-version.tar.xz
+         ----- nameofpkg                # file 
+         ----- src                      # dir file of source code
+                ------ configure
+                ------ autogen.sh
+                ------ ETC

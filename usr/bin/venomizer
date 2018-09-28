@@ -1,0 +1,921 @@
+#!/bin/bash
+# small and simple pakage manager for dracOs linux
+# created by Black_moth - purnomo hadi (purnomo.shinigami@gmail.com)
+# dracOs dev team
+
+
+
+JOB="$2"   
+. venom.cfg
+NC='\033[0m'
+RED='\033[1;31m'
+GREEN='\033[0;32m'
+ORANGE='\033[0;33m'
+EXIT_(){
+rm  /tmp/lock-venomizer >/dev/null 2>/dev/null
+echo "" 
+echo -e "---GOODBAY---"
+exit 0 
+}
+
+
+if [[ $EUID -ne 0 ]]; then
+    echo "This script must be run as root" 
+	exit 1
+fi
+
+
+JOB="$2"   
+
+
+
+
+if [ -e "/tmp/lock-venomizer" ]
+then 
+	echo -e "$RED --- ERROR! $NC venomizer already runing ---" 
+	EXIT_
+else
+	echo "lock" >> /tmp/lock-venomizer
+fi
+
+
+                              
+
+
+readonly COMMAND="$0"
+readonly SETUP_ARCH="`uname -m`"
+readonly VERSION="1.0"
+PWDN=$(pwd)
+
+cek_installed_tools(){
+SEC_TOOLS="$(cat $VENOM_LIST | grep $JOB |  sed 's/\-[^ ]*//g' | sed 's/\ //g')"
+SEC_TOOLS_ver="$(cat $VENOM_LIST | grep $JOB  | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/' | sed 's/\.//g' | sed 's/\ //g')"
+	
+repo_list_file_dl="$(cat $REPO_LIST | grep $JOB |  sort -rn |  head -n1  | sed 's/\ //g' ) "
+repo_list_file_="$(cat $REPO_LIST | grep $JOB | sed 's/\.//g' |  sed 's/\-//g') "
+repo_list_files="$(echo "$repo_list_file_" | sort -rn  |  head -n1 )"
+repo_list_file="$(echo "$repo_list_files" | sed 's/[^0-9]*//g' )"
+
+repo_list_name="$(cat $REPO_LIST | grep $JOB |  sed 's/\-[^ ]*//g' |  head -n1   )"
+repo_list_name_="$(echo $repo_list_name |  sed 's/\ //g')"
+
+    # echo "$(echo "$repo_list_file_dl" | sort -rn  |  head -n1 )"
+if [  "$(echo $repo_list_name_)"  == "$JOB" ]
+then
+	if [ "$SEC_TOOLS" == "$JOB" ]
+  	then
+        	echo "$SEC_TOOLS $(cat $VENOM_LIST | grep $JOB   | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/')  is installed" 
+                VENOM_INSTALLED_TRUE=""
+                VENOM_INSTALLED_TRUE="yes" 
+        	if [ "$SEC_TOOLS_ver" -ge  "$repo_list_file" ] 
+        	then 
+			echo "$JOB is latest version"
+                        EXIT_
+        	else
+                        # cecking new version from repo 
+                	echo "but is old version" 
+                	echo ""
+			echo "$JOB new version is $(cat $REPO_LIST | grep $JOB  | sort -rn  |  head -n1  | perl -pe '($_)=/([0-9]+([.][0-9]+)+)/' )"
+               
+			echo  "do you want upgrade to new version "
+                        echo -n "or o to install other version  (y/n/o)? "
+			echo ""
+                	old_stty_cfg=$(stty -g)
+			stty raw -echo ; answer=$(head -c 1) ; stty $old_stty_cfg # Careful playing with stty
+			if echo "$answer" | grep -iq "^y" ;then
+    				 archive="$(echo "$repo_list_file_dl$REPO_EXT" | sed 's/\ //g')"
+                       		download_function
+                        return
+                        elif echo "$answer" | grep -iq "^o" 
+                        then 
+                             echo ""
+                             CEK_REPO_LIST
+                             
+			else
+                                 
+    				EXIT_
+                            
+			fi
+	
+
+		fi
+	
+	else
+             VENOM_INSTALLED_TRUE=""
+             VENOM_INSTALLED_TRUE="yes" 
+             echo "$JOB not installed"
+             archive="$(echo "$repo_list_file_dl$REPO_EXT" | sed 's/\ //g')"
+             download_function 
+  	fi 
+else
+	no_repo_name
+fi         
+}
+
+download_function(){
+	cd $src_venom
+	if [ "$SETUP_INSTALL_SPESIFIK" == "yes" ]
+	then 
+
+		echo "downloading $JOB ..." 
+		TGT_DL_REPO="$(echo "$REPO_URL$JOB$REPO_EXT" | sed 's/\ //g')"
+                 archive="$(echo "$JOB$REPO_EXT" | sed 's/\ //g')"
+                 JOB_NAME="$(echo $JOB |  sed 's/\-[^ ]*//g')"
+                 SRC_JOB_DIR="$(echo "$build_venom/$JOB" | sed 's/\ //g')"
+                 SRC_JOB_="$(echo "$build_venom/$JOB/$JOB_NAME" | sed 's/\ //g')"
+                 repo_list_file_dl="$JOB"
+                 
+                
+                 
+	else
+
+		echo "downloading $repo_list_file_dl$REPO_EXT ..." 
+		TGT_DL_REPO="$(echo "$REPO_URL$repo_list_file_dl$REPO_EXT" | sed 's/\ //g')"
+                SRC_JOB_DIR="$(echo "$build_venom/$repo_list_file_dl" | sed 's/\ //g')"
+                SRC_JOB_="$(echo "$build_venom/$repo_list_file_dl/$JOB" | sed 's/\ //g')"
+
+	fi 
+echo " downloading source from repo "
+ wget -c $TGT_DL_REPO 
+echo ""
+extract_funtion
+
+}
+extract_funtion(){
+
+	cd $build_venom
+       
+	echo "extract $archive ..."
+        echo ""
+	tar -xf $src_venom/$archive >/dev/null 2>/dev/null
+
+        . $SRC_JOB_
+
+        echo -e "$GREEN---$NC Sumary $GREEN---$NC"
+        echo -e "Maintaner   : $maintainer"
+        echo -e "              $position"
+	echo -e "Email       : $maintainer_email"
+        echo -e "description :" 
+        echo -e "$info_pkg"
+        echo -e "$GREEN-------------- $NC"
+            
+       ceck_depend_lib
+	
+
+
+
+
+}
+
+
+CEK_REPO_LIST(){
+        FILE_NAME_REPO_2="$(cat $REPO_LIST  | grep $JOB)"
+        CECK_NAME_REPO="$(cat $REPO_LIST  | grep $JOB | sed 's/\ //g')"
+echo "list avaliliable version "
+echo ""
+#echo "$FILE_NAME_REPO_2 "
+
+echo -n "Please chose one : "
+echo ""
+
+mkdir /tmp/job/$JOB
+cd  /tmp/job/$JOB
+for LST in $CECK_NAME_REPO
+do 
+	echo "file" >> /tmp/job/$JOB/$LST
+done
+unset options i
+while IFS= read -r -d $'\0' f; do
+  options[i++]="$f"
+done < <(find * -maxdepth 1 -type f  -print0  )
+
+select opt in "${options[@]}" "Exit"; do
+  case $opt in
+    *-*)
+      echo "venom pkg $opt selected"
+      cd $src_venom
+         repo_list_file_dl="$opt"
+         archive="$(echo "$repo_list_file_dl$REPO_EXT" | sed 's/\ //g')"
+	TGT_DL_REPO="$(echo "$REPO_URL$repo_list_file_dl$REPO_EXT" | sed 's/\ //g')"
+         echo " downloading source from repo "
+         wget -c $TGT_DL_REPO 
+	 echo "" 
+         extract_funtion
+      ;;
+    "Exit")
+      echo "exiting venomizer "
+      exit 1 
+      ;;
+    *)
+      echo "This is not a number"
+      ;;
+  esac
+done
+
+}
+
+
+log_no_(){
+name_="$name>=$ver-not "
+echo "$name_" >> /tmp/no_ 
+#PKG_LIST="$PKG_LIST $name_"
+#echo   "$PKG_LIST" >> /tmp/no_
+}
+
+
+ceck_depend_lib(){
+
+	echo  -e "cecking dependencies ... "
+	echo ""
+	for file_depend in $(cat $SRC_JOB_ | grep depend |  sed 's/depend="*//' | sed 's/\"//g' ) 
+	do  
+		local shellopts=$(shopt -p extglob)
+		shopt -s extglob
+
+		for depend in "${file_depend[@]}"
+		do 
+			name=${depend%%@(<|>|=|>=|<=)*}
+			ver=${depend##$name@(<|>|=|>=|<=)?(+([0-9]):)}
+
+		done
+                        
+                LIST_DEP="$name"
+		LIST_INS="$(cat $VENOM_LIST | grep \\$name\\b |  sed 's/\-[^ ]*//g' )"
+		#echo  -e "##$LIST_DEP $LIST_INS"
+		if [ "$LIST_DEP" == "$LIST_INS" ]
+		then
+		
+                	INT_VER="$(cat  $VENOM_LIST | grep \\$name\\b  | sed 's/.*-//g')"
+              	
+			if [ "${INT_VER//.}" -ge "${ver//.}" ]
+			then 
+				echo  -e  " cecking $name $ver \t  \t $GREEN [OK] $NC \t installed or newer"
+			
+			else
+				echo -e  " cecking $name $ver \t  \t $ORANGE [WARM] $NC \t Version to low "
+                        log_no_
+                	fi
+		else
+			echo  -e " cecking $name $ver  \t  \t $RED [NO] $NC \t not installed"
+                	log_no_
+		fi
+	eval "$shellopts"
+
+
+	done
+
+
+	CEK_NO 
+	exit
+}
+######################################
+#### install spesifix by version #####
+######################################
+
+install_spesifik_run(){
+if [ "$JOB" == "$(cat $VENOM_LIST | grep $JOB | sed 's/\ //g' )" ]
+then 
+	
+        if [ "$SETUP_INSTALL_SPESIFIK" == "yes"  ]
+	then 
+		JOB="$(echo $JOB | sed 's/\-[^ ]*//g' | sed 's/\ //g')"
+        fi
+        
+        cek_installed_tools
+else
+	if [ "$JOB" == "$(cat $REPO_LIST | grep $JOB | sed 's/\ //g' )" ]
+	then
+ 		download_function
+	else
+		no_repo_name
+	fi
+fi
+
+
+}
+
+
+##########################################
+#### END install spesifix by version #####
+##########################################
+
+CEK_NO(){
+
+        #echo  "$no_"  | sed 's/.*=//g' # after
+	#echo   "$no_"  | sed 's/\=[^ ]*//g' 
+        #echo "$(cat /tmp/no_ | sed 's/.*-//g' )"
+	if [ -e "/tmp/no_" ] 
+        then
+        	if [ $(cat /tmp/no_ | grep not | sed 's/.*-//g'| sort -u ) == "not" ]
+	 	then
+         		echo ""
+	 		echo "please install dependency first before continue"
+         		# name_no_="$(cat /tmp/no_ |  sed 's/\=[^ ]*//g' | sed 's/\-[^ ]*//g' )"
+         		ver_no_="$(cat /tmp/no_ |  sed 's/\-[^ ]*//g' | sed  "s/>=/ >= /g" )"
+                        echo ""
+         		echo "$ver_no_"
+			exit
+                
+         	else 
+			echo  -e "true"
+                        
+         	fi
+
+        else    echo "" 
+		echo "all dependencies all ready installed ... "
+	        echo "preparing $JOB ..."
+                pre_function
+        fi
+
+
+}
+
+
+pre_function(){
+	cd $SRC_JOB_DIR/src
+        if [ "$SETUP_INSTALL_SPESIFIK" == "yes"  ]
+	then 
+		JOB="$(echo $JOB | sed 's/\-[^ ]*//g' | sed 's/\ //g')"
+        fi
+	if [ -z $pre_venom ]
+        then
+		echo "no prepare command ..."
+	else
+		echo "runing prepare command ... "
+
+
+                $pre_venom
+	fi
+
+	configure_funtion
+}
+
+
+
+configure_funtion(){
+
+
+		 $configure_venom  >/dev/null 2>/dev/null
+
+
+                
+	
+	make_function
+}
+make_function(){
+	cd $SRC_JOB_DIR/src
+             	if [ -z $build_venom ]
+        then
+		echo "no compiling command ..."
+	else
+        	echo "compiling $JOB ..."
+		 $build_venom   >/dev/null 2>/dev/null
+        fi	
+	uninstall_function
+}
+
+
+uninstall_function(){
+SEC_TOOLS="$(cat $VENOM_LIST | grep $JOB |  sed 's/\-[^ ]*//g' | sed 's/\ //g' )"
+RMV="$UNINSTALLER_DB/$JOB"
+        cd /tmp/null
+	if [ "$SEC_TOOLS" == "$JOB" ]
+  	then
+                echo "remove $JOB from venom.list"
+        	JOB_RMV="$(echo $JOB | sed 's/\ //g')"
+        	sed -i.old "s/$(cat $VENOM_LIST | grep $JOB)/ /g" $VENOM_LIST
+           			
+        fi
+        if [ -e  /etc/ld.so.conf.d/$JOB.conf ]
+	then 
+               echo "removing ld.so.conf.d for nmap ..."
+              rm /etc/ld.so.conf.d/$JOB.conf
+
+        fi 
+        if [ -e  /etc/profile.d/$JOB.sh ]
+	then 
+                 echo "removing profile.d for nmap ..."
+                 rm /etc/profile.d/$JOB.sh
+              
+
+        fi
+
+
+
+	if [ -e $RMV ]
+	then 
+        	if [ -s $RMV ]
+        	then
+        		for uninstall_file in "$(cat $RMV)"
+			do 
+				echo "uninstalling installed $JOB ..."
+				rm -rfv $uninstall_file >/dev/null 2>/dev/null
+                                rm $RMV
+				
+
+
+
+        		done
+		 else
+                        echo "uninstaller $JOB file is empty do noting" 
+       			 
+		fi 
+        else
+                 echo "uninstaller $JOB  not found or not installed"
+		 
+                 
+
+        fi
+        
+
+        if [ "$SETUP_INSTALL_SPESIFIK" == "yes" ] 
+	then
+        	install_function
+       
+
+        elif [ "$VENOM_INSTALLED_TRUE" == "yes" ] 
+	then
+        	install_function
+
+	fi 
+
+
+
+
+
+
+}
+
+install_function(){
+	cd $SRC_JOB_DIR/src
+        echo "installing $JOB ..."
+         $install_venome  >/dev/null 2>/dev/null
+        FAKE_UN_DB="$FAKEROOT$UNINSTALLER_DB/$JOB"
+        cd $FAKEROOT
+
+	
+       
+        
+        cp --preserve -Rv $FAKEROOT/*  /   >/dev/null 2>/dev/null
+        
+  
+        #mkdir -vp $FAKEROOT$UNINSTALLER_DB
+        find * -type f >> $UNINSTALLER_DB/$JOB
+        sed -i 's/^/\//' $UNINSTALLER_DB/$JOB
+        if [ "$outside_system" == "yes" ]
+        then 
+    		echo "installing in outside /usr"
+                echo "$TGT_INSTALL" >> $UNINSTALLER_DB/$JOB
+        fi
+        
+     
+
+	
+        rm -rf $FAKEROOT_ 
+      
+      
+        
+	
+     write_install_db_function
+
+}
+
+
+
+write_install_db_function(){
+
+
+	if  [ -z "$(cat $VENOM_LIST | grep $JOB )" ]
+	then 
+		echo "add $JOB in venom.list ..."
+        	echo "$repo_list_file_dl" >> $VENOM_LIST
+	
+ 	else
+        	echo "renaming/updating $JOB in venom.list ..."
+     		TGTDB_="$(echo "$repo_list_file_dl" | sed 's/\ //g')"
+     		sed -i "s/$(cat $VENOM_LIST | grep $JOB)/${TGTDB_}/g" $VENOM_LIST
+                
+	fi
+
+
+ write_profile_d
+
+
+}
+write_profile_d(){
+
+if [ "$outside_system" == "yes" ]
+then 
+
+        echo "Generate /etc/profile.d/$JOB.sh"
+
+        echo "# auto generate by  venomizer  " >> /etc/profile.d/$JOB.sh
+        echo "# don't edit if you dont know what ar'u doing " >> /etc/profile.d/$JOB.sh
+        echo "  " >> /etc/profile.d/$JOB.sh 
+	echo "export ${JOB}_PREFIX=$TGT_INSTALL " >> /etc/profile.d/$JOB.sh
+
+
+
+	echo "pathappend  $TGT_INSTALL/bin              PATH " >> /etc/profile.d/$JOB.sh
+        echo "pathappend  $TGT_INSTALL/Sbin             PATH " >> /etc/profile.d/$JOB.sh
+	echo "pathappend  $TGT_INSTALL/lib/pkgconfig    PKG_CONFIG_PATH " >> /etc/profile.d/$JOB.sh
+	echo "pathappend  $TGT_INSTALL/share/pkgconfig  PKG_CONFIG_PATH " >> /etc/profile.d/$JOB.sh
+
+	echo "pathappend  $TGT_INSTALL/lib             LIBRARY_PATH " >> /etc/profile.d/$JOB.sh
+	echo "pathappend  $TGT_INSTALL/include         C_INCLUDE_PATH " >> /etc/profile.d/$JOB.sh
+	echo "pathappend  $TGT_INSTALL/include         CPLUS_INCLUDE_PATH " >> /etc/profile.d/$JOB.sh
+
+	echo "ACLOCAL='aclocal -I $TGT_INSTALL/share/aclocal' " >> /etc/profile.d/$JOB.sh
+
+
+	echo "export PATH PKG_CONFIG_PATH ACLOCAL LIBRARY_PATH C_INCLUDE_PATH CPLUS_INCLUDE_PATH " >> /etc/profile.d/$JOB.sh
+
+        echo "Generate /etc/ld.so.conf.d/$JOB.conf"
+
+
+        echo "# auto generate by  venomizer  " >> /etc/ld.so.conf.d/$JOB.conf
+        echo "# don't edit if you dont know what ar'u doing " >> /etc/ld.so.conf.d/$JOB.conf
+        echo "" >> /etc/ld.so.conf.d/$JOB.conf
+        echo "${TGT_INSTALL}/lib " >> /etc/ld.so.conf.d/$JOB.conf
+        chmod 755 /etc/profile.d/$JOB.sh
+        ldconfig  >/dev/null 2>/dev/null
+        for profile_d in "$(ls  /etc/profile.d/*.sh )"
+	do      
+        	source $profile_d 
+        done
+fi
+after_function
+
+
+}
+after_function(){
+
+	if [ -z $after_venom ]
+        then
+		echo "" >/dev/null 2>/dev/null
+	else
+		echo "runing after venom command ... "
+
+
+                $after_venom
+	fi
+
+EXIT_
+
+	
+}
+
+
+clean_up(){
+
+rm /tmp/no_ -v >/dev/null 2>/dev/null
+rm /tmp/repo-list-name >/dev/null 2>/dev/null
+rm -rf /tmp/job  >/dev/null 2>/dev/null
+rm -rf $build_venom >/dev/null 2>/dev/null
+#rm -rf $src_venom >/dev/null 2>/dev/null
+}
+
+read_repo(){
+       echo "" 
+	echo -e $RED "[(c) 2018 | dracos-linux.org | gauli.net " $NC
+	echo -e $GREEN "-- -- +=[ Dracos Linux : All Developer Team  ]=+ -- -- " $NC
+	echo "" 
+	echo ""
+	echo "List avaliable package from venomizer repo"
+	echo "$(cat $REPO_LIST | sort -u )"
+}
+
+read_repo_spesifik(){
+       echo "" 
+	echo -e $RED "[(c) 2018 | dracos-linux.org | gauli.net " $NC
+	echo -e $GREEN "-- -- +=[ Dracos Linux : All Developer Team  ]=+ -- -- " $NC
+	echo "" 
+	echo ""
+	echo "List avaliable nmap package from venomizer repo"
+	echo "$(cat $REPO_LIST | sort -u | grep $JOB)"
+}
+
+UPDATE_REPO_(){
+rm -v $REPO_LIST
+cd $VENOM_DIR
+wget $REPO_DB_URL
+EXIT_
+}
+####################
+
+print_value_empty() {
+echo "Please insert a value "
+
+EXIT_
+
+}
+no_repo_name(){
+echo " no repo name $JOB"
+
+EXIT_
+}
+
+
+
+###############################
+
+print_logo() {
+       
+        
+ echo ""      
+
+echo " __      ________ _   _  ____  __  __ _____ ____________ _____    "  
+echo " \ \    / /  ____| \ | |/ __ \|  \/  |_   _|___  /  ____|  __ \   "
+echo "  \ \  / /| |__  |  \| | |  | | \  / | | |    / /| |__  | |__) |  "
+echo "   \ \/ / |  __| | .   | |  | | |\/| | | |   / / |  __| |  _  /   "
+echo "    \  /  | |____| |\  | |__| | |  | |_| |_ / /__| |____| | \ \   "
+echo "     \/   |______|_| \_|\____/|_|  |_|_____/_____|______|_|  \_\  "
+
+echo ""
+echo -e $RED "[(c) 2018 | dracos-linux.org | gauli.net " $NC
+echo -e $GREEN "-- -- +=[ Dracos Linux : All Developer Team  ]=+ -- -- " $NC
+echo "" 
+echo "`basename ${COMMAND}` $VERSION"
+        echo ""
+
+
+}
+
+
+print_help() {
+	echo ""
+	echo -e $GREEN "-- -- +=[ Dracos Linux : All Developer Team  ]=+ -- -- " $NC
+	echo "" 
+        echo "dracOs linux pkg manager help page"
+        echo ""
+        echo "usage: `basename $COMMAND` [options]"
+	echo "options"
+        echo ""
+	echo " -i pkgname               install a pakage from repo"
+        echo " -I pkgname-xx.xx.xx      install pakage by version          "
+        echo " -r pkgname               rebuild pakage" 
+        echo " -o                       update repo list" 
+	echo " -s                       list all repo pakage "
+	echo " -S                       list spesifik pkg from repo"
+	echo " -u pkgname               remove installed pakage"
+	echo ""
+        echo " -h,                      Show the help"
+	echo " -v                       Show the version"
+
+EXIT_
+
+}
+
+
+parse_options() {
+	if [ $# -lt 1 ]; then
+
+		print_logo
+
+	EXIT_
+        else    
+                if [ "$1" ==  "-i" ]
+                then
+			if [ -z "$JOB" ]
+			then
+				print_value_empty
+                               EXIT_
+			else 
+                               SETUP_INSTALL="yes"
+			       return
+			fi
+
+		elif [ "$1" == "-I" ]     			#install by pkg ver	
+		then
+			if [ -z "$JOB" ]
+			then
+				print_value_empty
+                               EXIT_
+			else 
+                               SETUP_INSTALL_SPESIFIK="yes"
+			       return
+			fi
+		elif [ "$1" == "-u" ]     			# remove	
+		then
+			if [ -z "$JOB" ]
+			then
+				print_value_empty
+                               EXIT_
+			else 
+                               UNINSTALL_FUNCTION="yes"
+			       return
+			fi
+			
+			
+		elif [ "$1" == "-s" ]     			# list all repo PKG	
+		then
+			read_repo
+			return
+			
+		elif [ "$1" == "-S" ]     			# list spesifik PKG from repo	
+		then
+			if [ -z "$JOB" ]
+			then
+				print_value_empty
+                               EXIT_
+			else 
+                               LIST_SPESIFIK="yes"
+			       return
+			fi
+
+		elif [ "$1" == "-o" ]     			# update repo pkg	
+		then
+			UPDATE_REPO="yes"
+			EXIT_
+		elif [ "$1" == "-r" ]     			  #rebuild
+		then
+			print_logo
+			EXIT_
+		elif [ "$1" == "-h" ]                             # HELP
+		then
+			PRINT_HELP="yes"
+			
+		
+		elif [ "$1" == "-v" ]
+		then
+			PRINT_LOGO="yes"
+			
+              	else
+                           	echo -e $RED ""
+                                echo "`basename ${COMMAND}`: invalid option $1"
+                        	print_help
+                        
+                        
+                	EXIT_
+	  	fi
+       fi
+}
+
+
+
+main () {
+	parse_options "$@"
+      
+
+	ALL_LIST="$@"
+                     
+      
+
+        if [ "$SETUP_INSTALL" == "yes" ]; then
+		 if [ "$2" == "-$(echo $2 | sed 's/-*//' | sed 's/\ //g')" ]
+		 then
+			if [ "$ALL_LIST" == "-i $JOB" ]
+        		then
+                        	echo -e $RED ""
+                        	echo "Option Error"
+                        	echo "you can't parse -i  with another Option"
+                        	print_help
+				
+			fi
+                 else 
+				cek_installed_tools  $JOB
+
+                 fi
+
+       
+
+  	 
+	fi
+
+        #### install spesifix by version #####
+ 
+        if [ "$SETUP_INSTALL_SPESIFIK" == "yes" ]; then
+		 if [ "$2" == "-$(echo $2 | sed 's/-*//' | sed 's/\ //g')" ]
+		 then
+			if [ "$ALL_LIST" == "-I $JOB" ]
+        		then
+                        	echo -e $RED ""
+                        	echo "Option Error"
+                        	echo "you can't parse -i  with another Option"
+                        	print_help
+				
+			fi
+                 else 
+                               
+				install_spesifik_run  
+
+                 fi
+
+       
+
+  	 
+	fi
+#####
+        if [ "$UNINSTALL_FUNCTION" == "yes" ]; then
+		 if [ "$2" == "-$(echo $2 | sed 's/-*//' | sed 's/\ //g')" ]
+		 then
+			if [ "$ALL_LIST" == "-u $JOB" ]
+        		then
+                        	echo -e $RED ""
+                        	echo "Option Error"
+                        	echo "you can't parse -i  with another Option"
+                        	print_help
+				
+			fi
+                 else 
+				uninstall_function
+
+                 fi
+
+       
+
+  	 
+	fi
+
+    if [ "$UPDATE_REPO" == "yes" ]; then
+		 if [ "$ALL_LIST" == "-o" ]; then
+			UPDATE_REPO_
+			EXIT_
+                 else 
+                        echo -e $RED ""
+                        echo "Option Error"
+                        echo "you can't parse $1 with another Option"
+                        print_help
+                 fi
+
+       
+
+  	 
+	fi
+
+        if [ "$PRINT_LOGO" == "yes" ]; then
+		 if [ "$ALL_LIST" == "-v" ]; then
+			print_logo
+			EXIT_
+                 else 
+                        echo -e $RED ""
+                        echo "Option Error"
+                        echo "you can't parse $1 with another Option"
+                        print_help
+                 fi
+
+       
+
+  	 
+	fi
+        if [ "$PRINT_HELP" == "yes" ]; then
+		 if [ "$ALL_LIST" == "-h" ]
+		 then
+				print_help
+				exit
+		 else
+                        	echo -e $RED ""
+                        	echo "Option Error"
+                        	echo "you can't parse -S  with another Option"
+                        	print_help
+
+                 fi
+	fi
+        if [ "$LIST_SPESIFIK" == "yes" ]; then
+		
+		if [  "$(cat $REPO_LIST | grep $JOB |  sed 's/\-[^ ]*//g' |  head -n1   )"  == "$JOB" ]
+		then
+		 	if [ "$2" == "-$(echo $2 | sed 's/-*//' | sed 's/\ //g')" ]
+		 	then
+				if [ "$ALL_LIST" == "-S $JOB" ]
+        			then
+                        		echo -e $RED ""
+                        		echo "Option Error"
+                        		echo "you can't parse -S  with another Option"
+                        		print_help
+				
+				fi
+                 	else 
+				read_repo_spesifik
+
+                 	fi
+                else
+			no_repo_name
+		fi
+	
+	fi
+
+
+
+
+
+}
+
+
+######## main ########
+
+
+
+clean_up
+mkdir /tmp/job  >/dev/null 2>/dev/null
+mkdir /tmp/null  >/dev/null 2>/dev/null
+mkdir $src_venom >/dev/null 2>/dev/null
+mkdir $build_venom >/dev/null 2>/dev/null
+mkdir -p $FAKEROOT  >/dev/null 2>/dev/null
+ main "$@"
+
+EXIT_ 
+
+
+
+

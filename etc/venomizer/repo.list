@@ -1,0 +1,4 @@
+# note name file cannot containing more than one "-"
+# format = namefileofpkg-version 
+
+nmap-7.70

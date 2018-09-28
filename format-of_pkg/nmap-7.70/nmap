@@ -1,0 +1,22 @@
+
+maintainer="black-moth - purnomo hadi"
+maintainer_email="purnomo.shinigami@gmail.com"
+position="LFS Developer"
+info_pkg="Nmap (Network Mapper) is a free and open source (license) \nutility for network discovery and security auditing"
+
+
+
+depend="libpcap>=1.8.1 liblinear>=220  "  
+
+pre_venom=""
+
+configure_venom="./configure  --prefix=${TGT_INSTALL} --with-liblua=included "      # see /usr/bin/venom.cfg
+
+build_venom="make"
+
+install_venome="make DESTDIR=${FAKEROOT} install"          # must be use ${FAKEROOT}  for tracking all installation file - see /usr/bin/venom.cfg
+
+
+after_venom=""
+
+
